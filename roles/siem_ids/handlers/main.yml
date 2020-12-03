@@ -1,0 +1,16 @@
+---
+# handlers file for roles/siem_ids
+- name: Start ElasticSearch Service
+  service:
+    name: elasticsearch
+    state: started
+
+- name: Start Kibana Service
+  service:
+    name: kibana
+    state: started
+
+- name: Start Logstash Service
+  service:
+    name: logstash
+    state: started

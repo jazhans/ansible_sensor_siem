@@ -1,0 +1,157 @@
+---
+# tasks file for roles/sensor_ids
+- name: see if zeek is installed
+  stat:
+    path: "{{ zeek_install_path }}"
+  register: zeek_installed
+
+- name: see if zeek git is ready
+  stat:
+    path: "{{ zeek_git_path }}"
+  register: zeek_git_installed
+
+- name: see if suricata is installed
+  stat:
+    path: /usr/bin/suricata
+  register: suricata_installed
+
+- name: see if filebeat is installed
+  stat:
+    path: /etc/filebeat
+  register: filebeat_installed
+
+- name: Download Filebeat Package
+  get_url:
+    url: https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.8.1-amd64.deb
+    dest: /tmp
+  when: filebeat_installed.stat.exists == False
+
+- name: Install FileBeat Deb Package
+  apt:
+    deb: /tmp/filebeat-7.8.1-amd64.deb
+  when: filebeat_installed.stat.exists == False
+
+- name: Remove FileBeat YAML File
+  file:
+    path: /etc/filebeat/filebeat.yml
+    state: absent
+
+- name: Remove Suricata Yaml file
+  file:
+    path: /etc/suricata/suricata.yaml
+    state: absent
+
+- name: maxmind ppa
+  apt_repository:
+    validate_certs: no
+    repo: 'ppa:maxmind/ppa'
+    state: present
+
+- name: suricata ppa
+  apt_repository:
+    validate_certs: no
+    repo: "ppa:oisf/suricata-stable"
+    state: present
+  when: suricata_installed.stat.exists == False
+
+- name: Install dependencies
+  apt:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+  when: suricata_installed.stat.exists == False
+
+- name: load maxmind db
+  copy:
+    src: roles/sensor_ids/files/GeoLite2-City.mmdb
+    dest: /usr/share/GeoIP
+    mode: 0644
+
+- name: git zeek
+  shell: git clone --recursive "{{ zeek_git }}"
+  args:
+    chdir: "{{ home_dir }}"
+  when: zeek_git_installed.stat.exists == False
+  
+- name: configure zeek
+  shell: ./configure --with-geoip=/usr/share/GeoIP
+  args:
+    chdir: "{{ home_dir }}/zeek"
+  when: zeek_installed.stat.exists == False
+
+- name: make & make install zeek
+  shell: make && make install
+  args:
+    chdir: "{{ zeek_git_path }}"
+  when: zeek_installed.stat.exists == False
+
+- name: Insert json messages to config.
+  lineinfile:
+    path: "{{ zeek_policy_path }}/local.zeek"
+    line: '@load policy/tuning/json-logs.zeek'
+
+
+- name: Download Filebeat Package
+  get_url:
+    url: https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.8.1-amd64.deb
+    dest: /tmp
+  when: filebeat_installed.stat.exists == False
+
+- name: Install FileBeat Deb Package
+  apt:
+    deb: /tmp/filebeat-7.8.1-amd64.deb
+  when: filebeat_installed.stat.exists == False
+
+- name: Create zeek filebeat config files
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "u=rw,g=r,o=r"
+  loop:
+    - { src: roles/sensor_ids/templates/zeekctl_cfg.j2,            dest: /usr/local/zeek/etc/zeekctl.cfg }
+    - { src: roles/sensor_ids/templates/filebeat.yml.j2,           dest: /etc/filebeat/filebeat.yml }
+    - { src: roles/sensor_ids/templates/node.cfg.j2,               dest: /usr/local/zeek/etc/node.cfg }
+    - { src: roles/sensor_ids/templates/suricata.yml.j2,           dest: /etc/suricata/suricata.yaml }
+    - { src: roles/sensor_ids/templates/zeek.yml.filebeat.j2,      dest: /etc/filebeat/modules.d/zeek.yml }
+    - { src: roles/sensor_ids/templates/filebeatzeek.yml.j2,       dest: /etc/filebeat/filebeatzeek.yml }
+    - { src: roles/sensor_ids/templates/filebeatzeek.service.j2,   dest: /lib/systemd/system/filebeatzeek.service }
+
+- name: Create needed directories
+  file:
+    path: "{{ item.path }}"
+    state: "{{ item.state }}"
+  loop:
+    - {path: "{{ log_location }}/suricata", state: "directory" }
+    - {path: "{{ log_location }}/suricata/files", state: "directory" }
+    - {path: "{{ log_location }}/suricata/core", state: "directory" }
+    - {path: "{{ log_location }}/suricata/certs", state: "directory" }
+    - {path: "{{ log_location }}/zeek", state: "directory" }
+    - {path: "{{ log_location }}/zeek/logs", state: "directory" }
+    - {path: "{{ log_location }}/zeek/spool", state: "directory" }
+    - {path: "{{ log_location }}/zeek/spool/brokerstore", state: "directory" }
+
+- name: Create filebeat zeek directories
+  file:
+    path: "{{ item.path }}"
+    state: "{{ item.state }}"
+    mode: 0750
+  loop:
+    - {path: /var/lib/filebeatzeek, state: "directory" }
+
+- name: Enable zeek module
+  shell: filebeat -c /etc/filebeat/filebeatzeek.yml modules enable zeek
+  args:
+    chdir: "{{ home_dir }}"
+
+- name: Setup filebeat zeek module
+  shell: filebeat setup -c /etc/filebeat/filebeatzeek.yml
+  args:
+    chdir: /etc/filebeat
+  when: filebeat_installed.stat.exists == False
+
+- name: start zeek
+  shell: /usr/local/zeek/bin/zeekctl start
+  args:
+    chdir: "{{ home_dir }}"
+
+- include: handlers/main.yml

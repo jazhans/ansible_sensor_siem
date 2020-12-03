@@ -1,0 +1,16 @@
+---
+# handlers file for roles/sensor_ids
+- name: Start Suricata Service
+  service:
+    name: suricata
+    state: started
+
+- name: Start Filebeat Service
+  service:
+    name: filebeat
+    state: started
+
+- name: Start Filebeat Zeek Service
+  service: 
+    name: filebeatzeek
+    state: started

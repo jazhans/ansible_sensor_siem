@@ -1,0 +1,9 @@
+# hosts
+[sensor_ids]
+my-lab-sensor ansible_host=<your sensor ip>
+
+[siem_ids]
+my-lab-siem ansible_host=<your siem ip>
+
+[local]
+control ansible_connection=local

@@ -1,0 +1,9 @@
+---
+# vars file for roles/siem_ids
+home_dir: < your home dir >
+elk_stack_version: 7.8.1
+elasticsearch_version: "{{ elk_stack_version }}"
+kibana_version: "{{ elk_stack_version }}"
+logstash_version: "{{ elk_stack_version }}"
+logstash_jvm_options: 4g
+synlite_git: https://github.com/robcowart/synesis_lite_suricata.git

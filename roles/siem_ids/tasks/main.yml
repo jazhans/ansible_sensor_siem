@@ -1,0 +1,186 @@
+---
+# siem install tasks
+- name: update apt cache if needed
+  apt:
+    update_cache=yes
+    cache_valid_time=3600
+
+- name: check if elasticsearch is installed
+  stat:
+    path: /etc/elasticsearch
+  register: elasticsearch_installed
+
+- name: check if kibana is installed
+  stat:
+    path: /etc/kibana
+  register: kibana_installed
+
+- name: check if logstash is installed
+  stat:
+    path: /etc/logstash
+  register: logstash_installed
+
+- name: check if synlite suricata git is installed
+  stat:
+    path: "{{ home_dir }}/synesis_lite_suricata"
+  register: synlite_git_installed
+
+- name: Install Java Runtime Environment
+  apt:
+    name: default-jre
+    state: present
+
+- name: Add Elasticsearch apt key
+  apt_key:
+    url: "https://packages.elastic.co/GPG-KEY-elasticsearch"
+    state: present
+  when: elasticsearch_installed.stat.exists == False
+
+- name: Download Elastic Deb Package
+  get_url:
+    url: https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-{{ elasticsearch_version }}-amd64.deb
+    dest: /tmp
+  when: elasticsearch_installed.stat.exists == False
+
+- name: Install Elastic Deb Package
+  apt:
+    deb: /tmp/elasticsearch-{{ elasticsearch_version }}-amd64.deb
+  when: elasticsearch_installed.stat.exists == False
+
+- name: Update Elastic Config (IP Address to 0.0.0.0)
+  lineinfile:
+    destfile: /etc/elasticsearch/elasticsearch.yml
+    regexp: 'network.host'
+    line: 'network.host: 0.0.0.0'
+
+- name: Updating Elastic Config (Port Number)
+  lineinfile:
+    destfile: /etc/elasticsearch/elasticsearch.yml
+    regexp: 'http.port'
+    line: 'http.port: 9200'
+
+- name: Updating Elastic Config (Node Name)
+  lineinfile:
+    destfile: /etc/elasticsearch/elasticsearch.yml
+    regexp: '#node.name: node-1'
+    line: 'node.name: node-1'
+
+- name: Updating Elastic Config (Cluster Initial Master Nodes)
+  lineinfile:
+    destfile: /etc/elasticsearch/elasticsearch.yml
+    line: 'cluster.initial_master_nodes: ["node-1"]'
+  
+- name: Updating Elastic Config
+  lineinfile:
+    destfile: /etc/elasticsearch/elasticsearch.yml
+    line: 'indices.query.bool.max_clause_count: 8192'
+
+- name: Updating Elastic Config
+  lineinfile:
+    destfile: /etc/elasticsearch/elasticsearch.yml
+    line: 'search.max_buckets: 250000'
+
+- name: Download Kibana Deb Package
+  get_url:
+    url: https://artifacts.elastic.co/downloads/kibana/kibana-{{ kibana_version }}-amd64.deb
+    dest: /tmp
+  when: kibana_installed.stat.exists == False
+
+- name: Install Kibana Deb Package
+  apt:
+    deb: /tmp/kibana-{{ kibana_version }}-amd64.deb
+  when: kibana_installed.stat.exists == False
+
+- name: Update Kibana Config (IP Address)
+  lineinfile:
+    destfile: /etc/kibana/kibana.yml
+    regexp: 'server.host'
+    line: 'server.host: "0.0.0.0"'
+
+- name: Defining server port
+  lineinfile:
+   destfile: /etc/kibana/kibana.yml
+   regexp: 'server.port:'
+   line: 'server.port: 5601'
+
+- name: Update Kibana Config (Kibana URL)
+  lineinfile:
+    destfile: /etc/kibana/kibana.yml
+    regexp: 'elasticsearch.hosts'
+    line: 'elasticsearch.hosts: ["http://localhost:9200"]'
+
+- name: Download Logstash Deb Package
+  get_url:
+    url: https://artifacts.elastic.co/downloads/logstash/logstash-{{ logstash_version }}.deb
+    dest: /tmp
+  when: logstash_installed.stat.exists == False
+
+- name: Install Logstash Deb Package
+  apt:
+    deb: /tmp/logstash-{{ logstash_version }}.deb
+  when: logstash_installed.stat.exists == False
+
+- name: Update Logstash JVM Options 1
+  replace:
+    path: /etc/logstash/jvm.options
+    regexp: '-Xms1g'
+    replace: '-Xms{{ logstash_jvm_options }}'
+
+- name: Update Logstash JVM Options 2
+  replace:
+    path: /etc/logstash/jvm.options
+    regexp: '-Xmx1g'
+    replace: '-Xmx{{ logstash_jvm_options }}'
+
+- name: Git Clone Synlite Suricata Dashboards & Configs
+  shell: git clone --recursive "{{ synlite_git }}"
+  args:
+    chdir: "{{ home_dir }}"
+  when: synlite_git_installed.stat.exists == False
+
+- name: Copy City GeoIP Database
+  copy:
+    src: roles/siem_ids/files/GeoLite2-City.mmdb
+    dest: "{{ home_dir }}/synesis_lite_suricata/logstash/synlite_suricata/geoipdbs/GeoLite2-City.mmdb"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Copy ASN GeoIP Database
+  copy:
+    src: roles/siem_ids/files/GeoLite2-ASN.mmdb
+    dest: "{{ home_dir }}/synesis_lite_suricata/logstash/synlite_suricata/geoipdbs/GeoLite2-ASN.mmdb"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Copy Logstash synlite dirs to logstash local
+  copy:
+    src: "{{ home_dir }}/synesis_lite_suricata/logstash/synlite_suricata"
+    dest: /etc/logstash
+    remote_src: yes
+
+- name: Copy Logstash synlite dirs to logstash service
+  copy:
+    src: "{{ home_dir }}/synesis_lite_suricata/logstash.service.d"
+    dest: /etc/systemd/system
+    remote_src: yes
+
+- name: Create logstash config files
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "u=rw,g=r,o=r"
+  loop:
+    - { src: roles/siem_ids/templates/pipelines.yml.logstash.j2,                dest: /etc/logstash/pipelines.yml }
+    - { src: roles/siem_ids/templates/30_output_elasticsearch.logstash.conf.j2, dest: /etc/logstash/synlite_suricata/conf.d/30_output_elasticsearch.logstash.conf }
+
+- name: Create logstash config files
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "u=rwx,g=rx,o=rx"
+  loop:
+    - { src: roles/siem_ids/templates/zeek.template.json.j2,                    dest: /etc/logstash/synlite_suricata/templates/zeek.template.json }
+
+- include: handlers/main.yml

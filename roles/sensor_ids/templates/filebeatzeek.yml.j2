@@ -1,0 +1,10 @@
+filebeat.config.modules:
+  enabled: true
+  reload.enabled: true
+  reload.period: 10s
+  path: ${path.config}/modules.d/*.yml
+
+output.elasticsearch:
+   hosts: ["{{ siem_ip }}:9200"]       
+setup.kibana:
+   host: "{{ siem_ip }}:5601"

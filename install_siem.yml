@@ -1,0 +1,5 @@
+---
+  - hosts: siem_ids
+    become: true
+    roles:
+      - siem_ids

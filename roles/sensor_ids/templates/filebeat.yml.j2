@@ -1,0 +1,11 @@
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+   - {{ log_location }}/suricata/eve.json
+
+  fields:
+   event.type: suricata
+
+output.logstash:
+   hosts: ["{{ siem_ip }}:5044"]

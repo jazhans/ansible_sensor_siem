@@ -1,0 +1,5 @@
+---
+  - hosts: sensor_ids
+    become: true
+    roles:
+      - sensor_ids

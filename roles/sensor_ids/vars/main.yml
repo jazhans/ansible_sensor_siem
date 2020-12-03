@@ -1,0 +1,53 @@
+---
+# vars file for roles/sensor_ids
+home_dir: < your home dir >
+zeek_git: https://github.com/zeek/zeek
+zeek_git_path: "{{ home_dir }}/zeek"
+zeek_policy_path: /usr/local/zeek/share/zeek/site/
+zeek_config_path: /usr/local/zeek/etc/
+zeek_install_path: /usr/local/zeek
+sniff_interface: < your interface >
+log_location: "{{ home_dir }}/logs"
+zeek_log_location: "{{ log_location }}/zeek/logs/current"
+suricata_rule_path: /var/lib/suricata/rules
+siem_ip: < your siem ip >
+
+packages:
+- cmake
+- make
+- gcc
+- g++
+- flex
+- bison
+- libpcap-dev
+- libssl-dev
+- python-dev
+- swig
+- zlib1g-dev
+- libpcre3
+- libpcre3-dev
+- libpcre3-dbg
+- build-essential
+- libnet1-dev
+- libyaml-0-2
+- libyaml-dev
+- pkg-config
+- zlib1g
+- libcap-ng-dev
+- libcap-ng0
+- libmagic-dev
+- libjansson-dev
+- libnss3-dev
+- libgeoip-dev
+- liblua5.1-dev
+- libhiredis-dev
+- libevent-dev
+- python-yaml
+- rustc
+- cargo
+- jq
+- suricata
+- libmaxminddb0
+- libmaxminddb-dev
+- mmdb-bin
+- suricata
