@@ -1,5 +1,5 @@
 
-![zeek](https://camo.githubusercontent.com/d8fc1510d644d4544c55e9b108372d86ea92d3e416e067e73dc62fec40678240/68747470733a2f2f7a65656b2e6f72672f77702d636f6e74656e742f75706c6f6164732f323032302f30342f7a65656b2d6c6f676f2d776974686f75742d746578742e706e67)![suricata](https://chocolatey.org/content/packageimages/suricata.2.0.2.20140625.png)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;![arrow](https://cdn.iconscout.com/icon/free/png-256/right-arrow-439-1161082.png)![elk](https://raw.githubusercontent.com/blacktop/docker-elastic-stack/master/docs/img/el_stack_logo.png)
+![logo](img/zeeksuricataelk.png)
 # Suricata Zeek Sensor + ELK SIEM
 
   
@@ -112,8 +112,4 @@ ansible-playbook install_sensor.yml --ask-become-pass
 
 https://github.com/robcowart/synesis_lite_suricata
 
-<<<<<<< HEAD
 https://github.com/zeek/zeek
-=======
-https://github.com/zeek/zeek
->>>>>>> eabddbeab58abb391731d824b30b9fc651ab7d07
