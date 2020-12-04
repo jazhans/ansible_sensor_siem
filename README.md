@@ -112,4 +112,8 @@ ansible-playbook install_sensor.yml --ask-become-pass
 
 https://github.com/robcowart/synesis_lite_suricata
 
+<<<<<<< HEAD
 https://github.com/zeek/zeek
+=======
+https://github.com/zeek/zeek
+>>>>>>> eabddbeab58abb391731d824b30b9fc651ab7d07
